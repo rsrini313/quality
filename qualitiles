@@ -1,0 +1,55 @@
+WITH ALLPASSTABLE AS
+(SELECT
+    A.ELEMENT_LABEL_VALUE AS LABEL_VALUE,
+    B.ELEMENT_0_VALUE AS COUNT_VALUE,
+    SORT_COL
+      FROM(SELECT 'Fail' ELEMENT_LABEL_VALUE, 0 AS SORT_COL FROM dual
+        UNION ALL
+        SELECT 'Pass'  ELEMENT_LABEL_VALUE, 1 AS SORT_COL  FROM dual
+        )A
+LEFT JOIN
+(Select PASS_FLG_ALL as "ELEMENT_LABEL_VALUE",
+Total as ELEMENT_0_VALUE
+From (
+SELECT
+SUM(CASE WHEN ('All' = (:QC2)) THEN TOT_ALLPASS
+when ((:QC2) = DOC_RCNT_FLG) then TOT_ALLPASS else 0 end) as Total,
+PASS_FLG_ALL
+from
+(
+SELECT DISTINCT
+TOT_ALLPASS,
+PASS_FLG_ALL,
+DOC_RCNT_FLG,
+STDY_ID, sponsr_nm, par_cust_nm, pri_thptc_area, pri_svc_ln_nm, stdy_stat, stdy_unit, pri_indctn, REGION, STD_CTRY_NM
+from 
+S_CARPT.DOC_RM_RVW_FACT_AGGR
+WHERE
+((:protocolsOptional = 1) OR STDY_ID IN (:protocols))
+AND ((:sponsorsOptional = 1) OR  sponsr_nm IN (:sponsors))
+AND ((:parentCustomerOptional = 1) OR  par_cust_nm IN (:parentCustomer))
+AND ((:therapeuticAreasOptional = 1) OR  pri_thptc_area IN (:therapeuticAreas))
+AND ((:qrpmservicelineOptional = 1) OR pri_svc_ln_nm in (:qrpmserviceline))
+AND ((:studyStatusesOptional = 1) OR  stdy_stat IN (:studyStatuses))
+AND ((:studyUnitOptional    = 1)   OR  stdy_unit IN (:studyUnit))
+AND ((:primaryindicationOptional    = 1)   OR  pri_indctn IN (:primaryindication))
+AND ((:protocolNumberOptional = 1) OR STDY_ID IN (:protocolNumber))
+AND ((:regionOptional = 1) OR REGION IN (:region))
+AND ((:countryOptional = 1) OR STD_CTRY_NM IN (:country))
+)AA
+GROUP BY PASS_FLG_ALL)) B
+on A.ELEMENT_LABEL_VALUE=B.ELEMENT_LABEL_VALUE
+)
+SELECT to_char(LABEL_VALUE) AS LABEL_VALUE,
+nvl((COUNT_VALUE),0) AS COUNT_VALUE,
+      CASE
+WHEN LABEL_VALUE= 'Fail' THEN 'color:#D8181C' 
+WHEN LABEL_VALUE='Pass'  THEN 'color:#7AC36A'
+END AS STYLE_VALUE,
+'style' as "STYLE_ROLE",
+'tooltip' as ANNOT_ROLE,
+to_char(COUNT_VALUE) as ANNOT_VALUE,
+SORT_COL
+FROM ALLPASSTABLE
+WHERE EXISTS   (SELECT * FROM ALLPASSTABLE WHERE COUNT_VALUE >0)
+Order by SORT_COL
