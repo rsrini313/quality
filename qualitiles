@@ -1,3 +1,196 @@
+
+////quality agg NAV sql April25////
+
+--liquibase formatted sql
+--changeset liquibase:1 runOnChange:true
+
+DELETE FROM RDSCDASDF.S_CARPT_OFL_ADV.DATA_LOAD_SQL_CONFIG_TBL WHERE SCHEMA_NM = 'S_CARPT_OFL_ADV' and TABLE_NM ='DOC_RM_RVW_FACT_AGGR';
+
+INSERT INTO RDSCDASDF.S_CARPT_OFL_ADV.DATA_LOAD_SQL_CONFIG_TBL
+(SCHEMA_NM, -- Schema Name
+TABLE_NM, -- Aggregate table to be loaded
+SQL_MERGE, 
+SQL_INSERT, -- Insert statemnt
+SQL_UPDATE, 
+SQL_DELETE, 
+START_TMSTMP, 
+END_TMSTMP, 
+RECORDS_INSERTED, 
+RECORDS_UPDATED, 
+RECORDS_DELETED, 
+STATUS, STATUS_MSG, 
+AUD_TABLE_NM, 
+SQL_AUD_QUERY, 
+FULL_LOAD_YN, -- Y means truncate and load.
+ACT_YN, -- Only the records with Y will be considered for processing
+ISRT_TS, 
+UPDT_TS, 
+DEL_FLG
+)
+VALUES('S_CARPT_OFL_ADV', 'DOC_RM_RVW_FACT_AGGR','', 'INSERT INTO S_CARPT_OFL_ADV.DOC_RM_RVW_FACT_AGGR
+SELECT DISTINCT
+COUNT(DISTINCT DOC_ID) OVER (PARTITION BY PROT_NBR, STD_CTRY_NM, "PASS_FLAG_REJECT", "Flag") as Total_REJECT_PASS,
+COUNT(DISTINCT CASE WHEN not (CONTAINS(RJCT_CRIT, ''Indexing'') or CONTAINS(RJCT_CRIT, ''Scanning Accuracy'') or CONTAINS(RJCT_CRIT, ''Document Completeness'') or CONTAINS(RJCT_CRIT, ''Duplicate Document'')) THEN DOC_ID ELSE NULL END) OVER (PARTITION BY PROT_NBR, STD_CTRY_NM, (case when "Modification_Sum" = 0 then ''Pass'' else ''Fail'' END), "Flag") as Total_REJECT_MOD,
+COUNT(DISTINCT DOC_ID) OVER (PARTITION BY PROT_NBR, STD_CTRY_NM, (case when ("Change_Flag_Sum" != 0) or CONTAINS(RJCT_CRIT, ''Indexing'') or CONTAINS(RJCT_CRIT, ''Scanning Accuracy'') or CONTAINS(RJCT_CRIT, ''Document Completeness'') or CONTAINS(RJCT_CRIT, ''Duplicate Document'') or CONTAINS(RJCT_CRIT, ''IeTMF Document Clarification Request'') then ''Fail'' else ''Pass'' end), "Flag") as Total_ALLPASS,
+case when "Modification_Sum" = 0 then ''Pass'' else ''Fail'' END AS "PASS_FLAG_MOD",
+case when ("Change_Flag_Sum" != 0) or CONTAINS(RJCT_CRIT, ''Indexing'') or CONTAINS(RJCT_CRIT, ''Scanning Accuracy'') or CONTAINS(RJCT_CRIT, ''Document Completeness'') or CONTAINS(RJCT_CRIT, ''Duplicate Document'') or CONTAINS(RJCT_CRIT, ''IeTMF Document Clarification Request'') then ''Fail'' else ''Pass'' end AS "PASS_FLAG_ALL",
+"PASS_FLAG_REJECT",
+"Flag",
+PROT_NBR,
+sponsr_nm,
+par_cust_nm,
+pri_thptc_area,
+pri_svc_ln_nm,
+stdy_stat,
+stdy_unit,
+pri_indctn,
+REGION,
+STD_CTRY_NM,
+CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), 0 , NULL, 0, null , null
+FROM
+(
+SELECT
+(case when "Doc_Type_Change_Flag" = ''Y'' then 1 else 0 end) + (case when "Subtype_Change_Flag" = ''Y'' then 1 else 0 end) + (case when "Language_Change_Flag" = ''Y'' then 1 else 0 end) + (case when "Doc_Date_Change_Flag" = ''Y'' then 1 else 0 end) AS "Modification_Sum",
+(case when "Doc_Type_Change_Flag" = ''Y'' then 1 else 0 end) + (case when "Subtype_Change_Flag" = ''Y'' then 1 else 0 end) + (case when "Subject Change Flag" = ''Y'' then 1 else 0 end) + (case when "Language_Change_Flag" = ''Y'' then 1 else 0 end) + (case when "Doc_Date_Change_Flag" = ''Y'' then 1 else 0 end) AS "Change_Flag_Sum",
+DOC_ID,
+AUDIT_DT,
+RJCT_CRIT,
+"PASS_FLAG_REJECT",
+"Flag",
+PROT_NBR,
+sponsr_nm,
+par_cust_nm,
+pri_thptc_area,
+pri_svc_ln_nm,
+stdy_stat,
+stdy_unit,
+pri_indctn,
+REGION,
+STD_CTRY_NM
+FROM
+(SELECT
+(CASE WHEN D2.DOC_TYP_INIT <> D2.DOC_TYP_LATEST THEN ''Y''
+WHEN D2.DOC_TYP_INIT is null and D2.DOC_TYP_LATEST is not null THEN ''Y''
+WHEN D2.DOC_TYP_INIT is not null and D2.DOC_TYP_LATEST is null THEN ''Y''
+ELSE ''N'' END) AS "Doc_Type_Change_Flag",
+(CASE WHEN D2.REF_MODEL_SUBTYP_INIT <> D2.REF_MODEL_SUBTYP_LATEST THEN ''Y''
+WHEN D2.REF_MODEL_SUBTYP_INIT is null and D2.REF_MODEL_SUBTYP_LATEST is not null THEN ''Y''
+WHEN D2.REF_MODEL_SUBTYP_INIT is not null and D2.REF_MODEL_SUBTYP_LATEST is null THEN ''Y''
+ELSE ''N'' END) AS "Subtype_Change_Flag",
+
+(CASE WHEN D2.LANG_INIT <> D2.LANG_LATEST THEN ''Y''
+WHEN D2.LANG_INIT is null and D2.LANG_LATEST is not null THEN ''Y''
+WHEN D2.LANG_INIT is not null and D2.LANG_LATEST is null THEN ''Y''
+ELSE ''N'' END) AS "Language_Change_Flag",
+
+(CASE WHEN D2.DOC_DT_INIT <> D2.DOC_DT_LATEST THEN ''Y''
+WHEN D2.DOC_DT_INIT is null and D2.DOC_DT_LATEST is not null THEN ''Y''
+WHEN D2.DOC_DT_INIT is not null and D2.DOC_DT_LATEST is null THEN ''Y''
+ELSE ''N'' END) AS "Doc_Date_Change_Flag",
+
+(CASE WHEN D2.DOC_SUBJ_INIT <> D2.DOC_SUBJ_LATEST THEN ''Y''
+WHEN D2.DOC_SUBJ_INIT is null and D2.DOC_SUBJ_LATEST is not null THEN ''Y''
+WHEN D2.DOC_SUBJ_INIT is not null and D2.DOC_SUBJ_LATEST is null THEN ''Y''
+ELSE ''N'' END) AS "Subject Change Flag",
+D2.DOC_ID,
+D2.AUDIT_DT,
+D2.RJCT_CRIT,
+CASE WHEN (CONTAINS(D2.RJCT_CRIT, ''Indexing'') or CONTAINS(D2.RJCT_CRIT, ''Scanning Accuracy'') or CONTAINS(D2.RJCT_CRIT, ''Document Completeness'') or CONTAINS(D2.RJCT_CRIT, ''Duplicate Document'')) THEN ''Fail'' ELSE ''Pass'' END AS "PASS_FLAG_REJECT",
+case when D2.DOC_FINAL_DT > DATEADD(DAY, -30, SYSDATE()) then ''Last 30 Days'' else ''Historic'' end as "Flag",
+CS.stdy_id AS PROT_NBR,
+CS.sponsr_nm,
+CS.par_cust_nm,
+CS.pri_thptc_area,
+CS.pri_svc_ln_nm,
+CS.stdy_stat,
+CS.stdy_unit,
+CS.pri_indctn,
+GD.REGION,
+GD.STD_CTRY_NM
+from
+(Select * from (select P1.STDY_ID, P1.GEOG_KEY, P1.DOC_TYP_ID, P1.DOC_ID, P1.DOC_TYP_INIT, P1.DOC_TYP_LATEST, P1.REF_MODEL_SUBTYP_INIT, P1.REF_MODEL_SUBTYP_LATEST, P1.LANG_INIT, P1.LANG_LATEST, P1.DOC_DT_INIT, P1.DOC_DT_LATEST, P1.DOC_SUBJ_INIT, P1.DOC_SUBJ_LATEST, P1.AUDIT_DT, P1.ORDER_NBR, LISTAGG(DISTINCT P1.RJCT_CRIT, '','') over (PARTITION BY P1.DOC_ID) "RJCT_CRIT", STAT, P1.DOC_FINAL_DT from S_OPS_ADS_ADV.DOC_RM_RVW_FACT p1) where STAT = ''Finalised in Wingspan'') D2
+INNER JOIN S_OPS_ADS_ADV.STDY_DIM CS ON (CS.stdy_id=D2.stdy_id AND CS.stdy_stat not in (''Completed'',''Discontinued'',''Proposed'') and CS.ETMF_STDY_STAT = ''Effective'' AND CS.INCL_IN_METRIC_FLG =''1'')
+LEFT OUTER JOIN S_OPS_ADS_ADV.GEOG_DIM GD ON (D2.GEOG_KEY=GD.GEOG_KEY)
+)
+)'
+, '', '', null, null, 0, 0, 0, '', '', '', '', 'Y', 'Y',CURRENT_TIMESTAMP(), null, 0);
+
+DELETE FROM RDSCDASDF.S_CARPT_OFL_ADV.DATA_LOAD_SQL_CONFIG_TBL WHERE SCHEMA_NM = 'S_CARPT_OFL_ADV' and TABLE_NM ='DOC_TRK_FACT_AGGR';
+
+INSERT INTO RDSCDASDF.S_CARPT_OFL_ADV.DATA_LOAD_SQL_CONFIG_TBL
+(SCHEMA_NM, TABLE_NM, SQL_MERGE, SQL_INSERT, SQL_UPDATE, SQL_DELETE, START_TMSTMP, END_TMSTMP, RECORDS_INSERTED, RECORDS_UPDATED, RECORDS_DELETED, STATUS, STATUS_MSG, AUD_TABLE_NM, SQL_AUD_QUERY, FULL_LOAD_YN, ACT_YN, ISRT_TS, UPDT_TS, DEL_FLG)
+VALUES('S_CARPT_OFL_ADV', 'DOC_TRK_FACT_AGGR','', 'INSERT INTO S_CARPT_OFL_ADV.DOC_TRK_FACT_AGGR
+SELECT DISTINCT
+
+-----------------------Completeness----------------------------------------------
+COUNT(DISTINCT CASE WHEN (ITEM_STAT in (''Fulfilled'',''Fulfilled with Reason'',''Pending'',''Proposed'',''Unfulfilled'') AND PAST_DUE_IND = ''Past Due'' and (DOC_STAT NOT IN (''Cancelled'', ''Obsolete'', ''Superseded'') OR DOC_STAT IS NULL)) THEN DOC_TRK_ID ELSE NULL END) OVER (PARTITION BY STDY_ID, STD_CTRY_NM, STATUS_COMPLETENESS) AS TOTAL_COMPLETENESS,
+ 
+COUNT(DISTINCT CASE WHEN (ITEM_STAT in (''Pending'',''Unfulfilled'',''Proposed'') and (DOC_STAT NOT IN (''Cancelled'', ''Obsolete'', ''Superseded'') OR DOC_STAT IS NULL)) THEN DOC_TRK_ID ELSE NULL END) OVER (PARTITION BY STDY_ID, STD_CTRY_NM, STATUS_DOCS_DUE) AS TOTAL_DOCS_DUE,
+STATUS_COMPLETENESS,
+STATUS_DOCS_DUE,
+----------------------------------------------------------------------------------
+----------------------Timeliness-----------------------------------------------------------------
+COUNT(DISTINCT case when (DOC_STAT=''Final'' AND TMLNSS_FLG IN (1,2) AND DOC_AUTHRED = ''0'') then doc_trk_id else null end) OVER (PARTITION BY stdy_id, STD_CTRY_NM, "Delay_Cat", "TIMELINESS_FLAG") as TOTAL_TIMELINESS, 
+COUNT(DISTINCT CASE WHEN (SCAN_TEAM not IN (''I-eTMF'') or SCAN_TEAM is null) and (DOC_STAT=''Final'' AND TMLNSS_FLG IN (1,2) AND DOC_AUTHRED = ''0'') THEN doc_trk_id ELSE NULL END) OVER (PARTITION BY stdy_id, STD_CTRY_NM, upld_delay_rng, "TIMELINESS_FLAG" ) AS TOTAL_UPLOAD_TIMELINESS,
+upld_delay_rng,
+"Delay_Cat",
+"TIMELINESS_FLAG",
+--------------------------------------------------------------------------------------
+--------------------------General-------------------------------------------------------------------
+stdy_id, sponsr_nm, par_cust_nm,  pri_thptc_area, pri_svc_ln_nm, stdy_stat, stdy_unit, pri_indctn, REGION, STD_CTRY_NM,
+CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), 0 , NULL, 0, null , null
+------------------------------------------------------------------------------------------
+
+FROM
+(SELECT
+D1.DOC_TRK_ID,
+
+---------------Completeness-----------------------------------------
+CASE WHEN D1.ITEM_STAT IN (''Fulfilled'', ''Fulfilled with Reason'') THEN ''Fulfilled''
+WHEN D1.ITEM_STAT IN (''Pending'',''Proposed'') THEN ''Pending''
+WHEN D1.ITEM_STAT = ''Unfulfilled'' then ''Unfulfilled''
+END AS STATUS_COMPLETENESS,
+
+Case 
+WHEN D1.ITEM_STAT in (''Pending'', ''Unfulfilled'', ''Proposed'') and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))>=0  and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))<30 then ''Due in <30 Days''         
+WHEN D1.ITEM_STAT in (''Pending'', ''Unfulfilled'', ''Proposed'') and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))>=30 and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))<60 then ''Due in <60 Days''         
+WHEN D1.ITEM_STAT in (''Pending'', ''Unfulfilled'', ''Proposed'') and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))>=60 and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))<90 then ''Due in <90 Days''         
+WHEN D1.ITEM_STAT in (''Pending'', ''Unfulfilled'', ''Proposed'') and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))>=90 then ''Due in >90 Days''         
+WHEN D1.ITEM_STAT in (''Pending'', ''Unfulfilled'', ''Proposed'') and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE()))) <0  and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE()))>= ROUND(ADD_MONTHS(DATE(SYSDATE()),-6) - DATE(SYSDATE())))  then ''<= 6 Mo Past Due''        
+WHEN D1.ITEM_STAT in (''Pending'', ''Unfulfilled'', ''Proposed'') and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE())))<0 and (ROUND(DATE(D1.DOC_DUE_DT)- DATE(SYSDATE()))) < ROUND(ADD_MONTHS(DATE(SYSDATE()),-6) - DATE(SYSDATE())) then ''> 6 Mo Past Due''         
+WHEN D1.ITEM_STAT in (''Pending'', ''Unfulfilled'', ''Proposed'') and D1.DOC_DUE_DT is null then null end as STATUS_DOCS_DUE,
+
+D1.ITEM_STAT,
+D1.PAST_DUE_IND,
+----------------------------------------------------------------------
+----------------------------------TIMELINESS------------------------
+D1.TMLNSS_FLG,
+D1.DOC_AUTHRED,
+
+D1.upld_delay_rng,
+D1.SCAN_TEAM,
+case when finalize_tm_days <30 then ''<30 Days''
+when finalize_tm_days >=30 and finalize_tm_days <60 then ''30-59 Days'' 
+when finalize_tm_days>=60 and finalize_tm_days<90 then ''60-89 Days''
+when finalize_tm_days >=90 then ''90+ Days'' 
+when finalize_tm_days is null then ''Review Needed''
+END as "Delay_Cat",
+
+case when D1.DAYS_30_FINALIZATION_IND = ''LAST 30 DAYS'' then ''Last 30 Days'' when D1.DAYS_30_FINALIZATION_IND = ''Historic'' then ''Historic'' end as "TIMELINESS_FLAG",
+------------------------------------------------------------------------
+
+-------------------General for quick filters----------------------
+D1.DOC_STAT, CS.stdy_id, CS.sponsr_nm, CS.par_cust_nm,  CS.pri_thptc_area, CS.pri_svc_ln_nm, CS.stdy_stat, CS.stdy_unit, CS.pri_indctn, GD.REGION, GD.STD_CTRY_NM
+--------------------------------------------------------------
+
+FROM
+S_OPS_ADS_ADV.DOC_TRK_FACT D1
+inner join S_OPS_ADS_ADV.DOC_DIM D2 on D1.DOC_KEY = D2.DOC_KEY AND  D1.IBR_FLG =''TMF'' AND D1.SRC_SYS_NM = ''WINGSPAN'' AND D2.VRTLLY_DEL_IND = ''0'' 
+inner join S_OPS_ADS_ADV.STDY_DIM CS on CS.STDY_KEY=D1.STDY_KEY AND CS.STDY_STAT NOT IN (''Completed'',''Discontinued'',''Proposed'') and CS.ETMF_STDY_STAT = ''Effective'' AND CS.INCL_IN_METRIC_FLG =''1''
+inner join S_OPS_ADS_ADV.GEOG_DIM GD on D1.GEOG_KEY=GD.GEOG_KEY
+)', '', '', null, null, 0, 0, 0, '', '', '', '', 'Y', 'Y',CURRENT_TIMESTAMP(), null, 0);
+
+///////
 WITH ALLPASSTABLE AS
 (SELECT
     A.ELEMENT_LABEL_VALUE AS LABEL_VALUE,
