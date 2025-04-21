@@ -1,3 +1,44 @@
+Select distinct STAT FROM RDSCDASDF.S_CARPT_ADV.VW_DOC_RM_RVW_FACT WHERE DOC_FINAL_SRC_SYS='I-ETMF';
+Finalised in Wingspan
+In Global RM Queue
+Sent to Wingspan
+Rejected
+In Workspace
+
+///////
+Select distinct STAT FROM RDSCDASDF.S_CARPT_ADV.VW_DOC_RM_RVW_FACT WHERE DOC_FINAL_SRC_SYS='WINGSPAN';
+Generic Approval Task (eApproval)
+QC Review
+Finalize
+Generic Task
+Approve
+Rework
+Obsolete or Delete Document
+
+Delete
+Request Assistance
+QC Workflow Initiation
+Workflow Initiation
+Revise Document Date or Relationships in Final Document
+Revise Attributes in Final Document
+Upload Document
+QC
+Task Rejected
+Approve List Change
+Obsolete and Retire
+Revise Document
+Virtual Delete
+Reject
+Generic Approval Task (eSignature)
+Task Resolved
+Index
+Task Will Resolve
+
+
+
+
+
+
 SELECT DISTINCT
 COUNT(DISTINCT DOC_ID) OVER (PARTITION BY PROT_NBR, STD_CTRY_NM, "PASS_FLAG_REJECT", "Flag") as Total_REJECT_PASS,
 COUNT(DISTINCT CASE WHEN not (CONTAINS(RJCT_CRIT, 'Indexing') or CONTAINS(RJCT_CRIT, 'Scanning Accuracy') 
