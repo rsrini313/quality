@@ -1,3 +1,7 @@
+
+
+Last_Value(Min(V1."ORDER_NBR"),case  when (V1."RJCT_CRIT"='IeTMF Document Clarification Request') and 
+([Pass Flag Reject]='Fail') then null else V1."RJCT_CRIT" end) OVER (PARTITION BY V1."DOC_ID") order by V1."ORDER_NBR" as "Reject_Criteria"///
 ///
 
 Select * from (select P1.STDY_ID, P1.DOC_ID, P1.GEOG_KEY, P1.DOC_TYP_ID,  P1.DOC_TYP_INIT, P1.DOC_TYP_LATEST, P1.REF_MODEL_SUBTYP_INIT, P1.REF_MODEL_SUBTYP_LATEST, P1.LANG_INIT, P1.LANG_LATEST, P1.DOC_DT_INIT, P1.DOC_DT_LATEST, P1.DOC_SUBJ_INIT, P1.DOC_SUBJ_LATEST, LISTAGG(DISTINCT P1.RJCT_CRIT, ',') over (PARTITION BY P1.DOC_ID) "RJCT_CRIT", STAT, 
